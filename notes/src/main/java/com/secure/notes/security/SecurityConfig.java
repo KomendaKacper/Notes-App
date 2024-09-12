@@ -27,6 +27,8 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 import java.time.LocalDate;
 
+import static org.springframework.security.config.Customizer.withDefaults;
+
 @Configuration
 @EnableWebSecurity
 //@EnableMethodSecurity(prePostEnabled = true,
@@ -44,18 +46,18 @@ public class SecurityConfig {
                         .ignoringRequestMatchers("/api/auth/public/**"));
 
 
-        http.authorizeHttpRequests((requests) -> {
+        http.authorizeHttpRequests((requests) ->
             ((AuthorizeHttpRequestsConfigurer.AuthorizedUrl)requests
                     .requestMatchers("/api/admin/**").hasRole("ADMIN")
                     .requestMatchers("/api/auth/public/**").permitAll()
                     .requestMatchers("/api/csrf-token").permitAll()
-                    .anyRequest()).authenticated();
-        });
-        http.formLogin(Customizer.withDefaults());
-//        http.csrf(AbstractHttpConfigurer::disable);
-        http.httpBasic(Customizer.withDefaults());
+                    .anyRequest()).authenticated());
+
         http.exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler));
         http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
+        http.formLogin(withDefaults());
+//        http.csrf(AbstractHttpConfigurer::disable);
+        http.httpBasic(withDefaults());
         return http.build();
     }
 
