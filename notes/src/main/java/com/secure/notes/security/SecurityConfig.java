@@ -31,9 +31,9 @@ import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
 @EnableWebSecurity
-//@EnableMethodSecurity(prePostEnabled = true,
-//        securedEnabled = true,
-//        jsr250Enabled = true)
+@EnableMethodSecurity(prePostEnabled = true,
+        securedEnabled = true,
+        jsr250Enabled = true)
 public class SecurityConfig {
 
     @Autowired
@@ -41,25 +41,22 @@ public class SecurityConfig {
 
     @Bean
     SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
-        http.csrf(csrf ->
-                csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                        .ignoringRequestMatchers("/api/auth/public/**"));
-
-
-        http.authorizeHttpRequests((requests) ->
-            ((AuthorizeHttpRequestsConfigurer.AuthorizedUrl)requests
-                    .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                    .requestMatchers("/api/auth/public/**").permitAll()
-                    .requestMatchers("/api/csrf-token").permitAll()
-                    .anyRequest()).authenticated());
-
-        http.exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler));
-        http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
-        http.formLogin(withDefaults());
-//        http.csrf(AbstractHttpConfigurer::disable);
-        http.httpBasic(withDefaults());
+        http.cors(withDefaults())  // Dodaj obsługę CORS
+                .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .ignoringRequestMatchers("/api/auth/public/**"))
+                .authorizeHttpRequests((requests) ->
+                        ((AuthorizeHttpRequestsConfigurer.AuthorizedUrl)requests
+                                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                                .requestMatchers("/api/auth/public/**").permitAll()
+                                .requestMatchers("/api/csrf-token").permitAll()
+                                .anyRequest()).authenticated())
+                .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
+                .addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class)
+                .formLogin(withDefaults())
+                .httpBasic(withDefaults());
         return http.build();
     }
+
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {

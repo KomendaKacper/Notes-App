@@ -8,6 +8,9 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
+    // Add these headers here (though they will be ignored for CORS purposes)
+    "Access-Control-Allow-Origin": "*",  // This will be ignored
+    "Access-Control-Allow-Headers": "Origin, X-Requested-With, Content-Type, Accept",  // This will be ignored
   },
   withCredentials: true,
 });

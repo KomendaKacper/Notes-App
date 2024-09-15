@@ -1,3 +1,4 @@
+// WebConfig.java
 package com.secure.notes.security;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -21,13 +22,19 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowCredentials(true)
                 .maxAge(3600);
 
-        registry.addMapping("/api/auth/**")
+        // Additional paths can be configured similarly
+        registry.addMapping("/api/csrf-token")
                 .allowedOrigins(frontendUrl)
-                .allowedMethods("POST", "PUT", "DELETE")
+                .allowedMethods("GET", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true)
                 .maxAge(3600);
 
+        registry.addMapping("/api/auth/**")
+                .allowedOrigins(frontendUrl)
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedHeaders("*")
+                .allowCredentials(true)
+                .maxAge(3600);
     }
-
 }
