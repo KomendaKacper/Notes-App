@@ -1,5 +1,6 @@
 package com.secure.notes.security;
 
+import com.secure.notes.config.OAuth2LoginSuccessHandler;
 import com.secure.notes.models.AppRole;
 import com.secure.notes.models.Role;
 import com.secure.notes.models.User;
@@ -11,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -39,9 +41,13 @@ public class SecurityConfig {
     @Autowired
     private AuthEntryPointJwt unauthorizedHandler;
 
+    @Autowired
+    @Lazy
+    OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
+
     @Bean
     SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
-        http.cors(withDefaults())  // Dodaj obsługę CORS
+        http.cors(withDefaults())
                 .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .ignoringRequestMatchers("/api/auth/public/**"))
                 .authorizeHttpRequests((requests) ->
@@ -49,7 +55,12 @@ public class SecurityConfig {
                                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                                 .requestMatchers("/api/auth/public/**").permitAll()
                                 .requestMatchers("/api/csrf-token").permitAll()
-                                .anyRequest()).authenticated())
+                                .requestMatchers("/oauth2/**").permitAll()
+                                .anyRequest()).authenticated()).
+                oauth2Login(oauth2 -> {
+                    oauth2.successHandler(oAuth2LoginSuccessHandler);
+
+                })
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
                 .addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class)
                 .formLogin(withDefaults())

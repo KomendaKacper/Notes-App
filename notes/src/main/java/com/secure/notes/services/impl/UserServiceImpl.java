@@ -8,7 +8,10 @@ import com.secure.notes.models.User;
 import com.secure.notes.repositories.PasswordResetTokenRepository;
 import com.secure.notes.repositories.RoleRepository;
 import com.secure.notes.repositories.UserRepository;
+import com.secure.notes.services.TotpService;
 import com.secure.notes.services.UserService;
+import com.secure.notes.util.EmailService;
+import com.warrenstrange.googleauth.GoogleAuthenticatorKey;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -37,6 +40,12 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     PasswordResetTokenRepository passwordResetTokenRepository;
+
+    @Autowired
+    EmailService emailService;
+
+    @Autowired
+    TotpService totpService;
 
     @Override
     public void updateUserRole(Long userId, String roleName) {
@@ -147,7 +156,73 @@ public class UserServiceImpl implements UserService {
 
         String resetUrl = frontentUrl + "/reset-password?token=" + token;
 
+        emailService.sendPasswordResetEmail(user.getEmail(), resetUrl);
     }
 
+    @Override
+    public void resetPassword(String token, String newPassword) {
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(token)
+                .orElseThrow(() -> new RuntimeException("Invalid password reset token"));
+
+        if (resetToken.isUsed())
+            throw new RuntimeException("Password reset token has already been used");
+
+        if (resetToken.getExpiryDate().isBefore(Instant.now()))
+            throw new RuntimeException("Password reset token has expired");
+
+        User user = resetToken.getUser();
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        resetToken.setUsed(true);
+        passwordResetTokenRepository.save(resetToken);
+    }
+
+    @Override
+    public Optional<User> findByEmail(String email) {
+        Optional<User> user = userRepository.findByEmail(email);
+        return user;
+    }
+
+    @Override
+    public User registerUser(User user) {
+        if (user.getPassword() != null)
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
+        return userRepository.save(user);
+    }
+
+    @Override
+    public GoogleAuthenticatorKey generate2FASecret(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        GoogleAuthenticatorKey key = totpService.generateSecret();
+        user.setTwoFactorSecret(key.getKey());
+        userRepository.save(user);
+        return key;
+    }
+
+    @Override
+    public boolean validate2FACode(Long userId, int code) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return totpService.verifyCode(user.getTwoFactorSecret(), code);
+    }
+
+
+    @Override
+    public void enable2FA(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setTwoFactorEnabled(true);
+        userRepository.save(user);
+    }
+
+    @Override
+    public void disable2FA(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setTwoFactorEnabled(false);
+        userRepository.save(user);
+    }
 
 }
